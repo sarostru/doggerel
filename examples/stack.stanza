@@ -1,0 +1,54 @@
+; From stanza by example, Chapter 8
+deftype Stack<T> <: Collection<T>
+
+defmulti push<?T> (s:Stack<?T>, x:T) -> False
+defmulti pop<?T> (s:Stack<?T>) -> T
+defmulti empty? (s:Stack) -> True|False
+
+
+defn Stack<T> (capacity:Int) -> Stack<T> :
+   val items = Array<T>(capacity)
+   var size = 0
+   new Stack :
+      defmethod push (this, x:T) :
+         if size == capacity : fatal("Stack is full!")
+         items[size] = x
+         size = size + 1
+      defmethod pop (this) :
+         if size == 0 : fatal("Stack is empty!")
+         size = size - 1
+         items[size]
+      defmethod empty? (this) :
+         size == 0
+      defmethod print (o:OutputStream, this) :
+         print(o, "Stack containing [")
+         print-all(o, join(this, " "))
+         print(o, "]")
+      defmethod to-seq (this) :
+         take-n(size, items)
+
+defn main () :
+   val s = Stack<Int>(10)
+   for x in [1, 5, 2, 42, -11, 2, 5, 10, -42] do :
+      push(s, x)
+
+   println("1. Contents of s")
+   println(s)
+
+   println("\n2. Index of 42")
+   println(index-of(s, 42))
+
+   println("\n3. Does it contain any negative numbers?")
+   println(any?({_ < 0}, s))
+
+   println("\n4. Are all numbers negative?")
+   println(all?({_ < 0}, s))
+
+   println("\n5. What are the negative numbers?")
+   val cap-s = filter({_ < 0}, s)
+   println-all(join(cap-s, ", "))
+
+   println("\n6. What are its unique elements?")
+   println(unique(s))
+
+main()

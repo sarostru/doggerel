@@ -1,0 +1,54 @@
+; Maximum sum of a subsequence, from Programming Pearls, Chapter 8
+
+
+; Make a random sequence of floating point numbers
+; TODO:: There doesn't seem to be a stdlib rng that is easy to use
+;        using a hardcoded array for now
+;; for i in 0 to 10 do :
+;;     val x:Int = rand()
+;;     println("%_: %_" % [i x])
+
+val TestInput = to-array<Int>([6 1 -2 -5 4 -2 5 -3 10])
+println(TestInput)
+
+
+defn sum-values (A:Seqable<Int>) -> Int:
+    var acc:Int = 0
+    for x in A do:
+        acc = acc + x
+    acc
+
+val s = sum-values(TestInput)
+println("Values add up to %_" % [s])
+
+; Try sum-values with a sequence
+println("1 + 2 + ... + 10 = %_" % [sum-values(1 through 10)])
+
+; Porting loop version from C
+var max_so_far:Int = 0
+var max_ending_here:Int = 0
+var max_start_index:Int = 0
+var max_end_index:Int = 0
+var start_index:Int = 0
+
+; Using the raw do notation and anonymous functions instead of the for loop
+; Takes advantage of the fact that anonymous functions by default capture their
+; types 
+do(fn (i, x) :
+      max_ending_here = max_ending_here + x
+
+      ; If we dip below 0 we can start over
+      if max_ending_here <= 0:
+        start_index = i + 1
+        max_ending_here = 0
+
+      ; if we find a new global max, update stuff
+      if max_so_far < max_ending_here:
+        max_start_index = start_index
+        max_end_index = i
+        max_so_far = max_ending_here
+      println("%_: max_ending_here = %_, max_so_far = %_ (from = %_, to = %_)" %
+              [i max_ending_here max_so_far max_start_index max_end_index])
+
+   0 to length(TestInput), TestInput)
+
