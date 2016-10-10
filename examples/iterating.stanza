@@ -1,0 +1,38 @@
+; Iterating across values
+val A = to-array<Int>([1 2 3 4 5])
+
+for (i in 0 to false, j in 1 to length(A)) do:
+    println("i = %_, j = %_" % [i j]) 
+
+; View
+deftype View<T> <: Collection<T>
+
+defn View<T> (items:IndexedCollection<T>, range:Range):
+    new View :
+        defmethod to-seq (this):
+            for i in range seq:
+                items[i]
+        defmethod print (o:OutputStream, this) :
+           print(o, "[")
+           print-all(o, join(this, " "))
+           print(o, "]")
+    
+
+val A1 = View<Int>(A, 1 to length(A))
+println("A = %_" % [A])
+println("A1 = %_" % [A1])
+
+println("Looping once:")
+for (a in A, b in A1) do:
+    println("a = %_, b = %_" % [a b])
+println("Looping again:")
+for (a in A, b in A1) do:
+    println("a = %_, b = %_" % [a b])
+
+; Can't set the View
+; A1[0] = 8
+; If we update A it shows in View
+A[1] = 8
+println("Looping again A[1] = 8:")
+for (a in A, b in A1) do:
+    println("a = %_, b = %_" % [a b])

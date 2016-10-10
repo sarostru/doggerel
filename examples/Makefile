@@ -1,3 +1,6 @@
+iterating: iterating.stanza
+	stanza iterating.stanza -o iterating
+
 questions: questions.stanza
 	stanza questions.stanza -o questions
 
