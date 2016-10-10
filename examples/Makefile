@@ -1,3 +1,6 @@
+questions: questions.stanza
+	stanza questions.stanza -o questions
+
 max_subsum: max_subsum.stanza
 	stanza max_subsum.stanza -o max_subsum
 

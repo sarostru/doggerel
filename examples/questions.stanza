@@ -1,0 +1,98 @@
+; vals/vars, experimenting with mutability
+
+val A = to-array<Int>([1 2 3 4 5])
+println("A = %_" % [A])
+A[0] = 5
+println("A = %_" % [A])
+
+var x:Int = 10
+; Can we make new var's that overlap with previous definitions?
+;  - No
+; var x:String = "a string"
+; Does this copy the value out of x?
+A[4] = x
+println("x = %_, A = %_" % [x, A])
+A[4] = 3
+println("x = %_, A = %_" % [x, A])
+
+; What if the values are themselves mutable
+val B = Array<Array<Int>>(2)
+B[0] = to-array<Int>([1 2 3])
+B[1] = to-array<Int>([4 5 6])
+
+var y:Array<Int> = to-array<Int>([0 1 0])
+println("Before assigning y to B[0], y = %_ B = %_" % [y B])
+B[0] = y
+println("After assigning y to B[0], y = %_ B = %_" % [y B])
+y[2] = 2
+println("After assigning 2 to y[2], y = %_ B = %_" % [y B])
+; That changed the value in y and in B[0], so an entry in this
+; B array is equivalent to a var, despite B being a val
+y = to-array<Int>([0 1 -1])
+println("After assigning [0 1 -1] to y, y = %_ B = %_" % [y B])
+y[2] = 5
+println("After assigning 5 to y[2], y = %_ B = %_" % [y B])
+; When y is reassigned to a new array, then they are no longer
+; aliased
+
+; I think this means that val/var distinction is assign-once
+; vs. can be reassigned.
+
+val H = HashTable<String, Int>()
+H["alpha"] = 0
+println("H = %_" % [H])
+
+; Aliasing of entries should occur if h and g are the same
+defn f (h:HashTable<String, Int>, g:HashTable<String, Int>):
+    h["alpha"] = h["alpha"] + 2
+    g["alpha"] = g["alpha"] + 2
+
+f(H, H)
+println("H = %_" % [H])
+
+; Can't assign to m, so function arguments are vals
+; defn g (m:Int):
+;    m = 3 
+
+defn g (a:Int, b:Int):
+    ; I think the last statement of the label, becomes the last of the function
+    label<Int> return:
+        if a < b :
+            return(a - b)
+        else if a > b :
+            return(a + b)
+        a
+
+println("g(1, 2) = %_, g(2, 1) = %_, g(1, 1) = %_" % [g(1 2) g(2 1) g(1 1)])
+
+; Testing evaluation order of arguments
+defn print_pass (name:String, x:Int):
+    println("%_: %_" % [name x])
+    x
+
+defn g2 (a:Int, b:Int):
+    g(print_pass("a", a), print_pass("b", b))
+    
+println("g2(1, 2) = %_, g2(2, 1) = %_, g2(1, 1) = %_" % [g2(1 2) g2(2 1) g2(1 1)])
+; looks like eager left to right evaluation
+
+
+; What about in type pattern matching, can their be side-effects?
+defn pm (a: Int|String):
+    match(a) :
+        (i:Int) : println("Integer a = %_, i = %_" % [a i])
+        (s:String) : println("String a = %_, s = %_" % [a s])
+
+pm(5)
+pm("five")
+; anonymous function syntax is pretty cool :)
+pm{_ - 2}{3 * _}(5)
+
+defn weird_selector (a:Int):
+    label<Int|String> return:
+        println("weird_selector with a = %_" % [a])
+        if a < 10:
+            return(a)
+        "weird"
+pm(weird_selector(5))
+pm(weird_selector(10))
