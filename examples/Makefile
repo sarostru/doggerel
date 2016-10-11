@@ -1,3 +1,6 @@
+subtyping: subtyping.stanza
+	stanza subtyping.stanza -o subtyping
+
 iterating: iterating.stanza
 	stanza iterating.stanza -o iterating
 

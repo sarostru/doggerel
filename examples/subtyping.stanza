@@ -1,0 +1,112 @@
+; Experimenting with strange subtyping relationships
+
+; Diamond Shaped Subtyping Tree
+; Ears <: Listener
+; Microphone <: Listener
+; Reporter <: Ears <: Microphone
+deftype Listener
+deftype Ears <: Listener
+deftype Microphone <: Listener
+defstruct Reporter <: Ears&Microphone:
+    name:String
+
+defmulti hears (listener:Listener, message:String) -> False
+
+; Default Implementation
+defmethod hears (listener:Listener, message:String) -> False:
+    println("Listener hears \"%_\"" % [message])
+
+defmethod hears (listener:Ears, message:String) -> False:
+    println("Ears hears \"%_\"" % [message])
+
+defmethod hears (listener:Microphone, message:String) -> False:
+    println("Microphone hears \"%_\"" % [message])
+
+val april = Reporter("April O'Neil")
+; All fear the ambiguous branch
+; hears(april, "Cowabunga!")
+
+; Neat, so it bails rather then trying to figure out something, makes sense
+
+; Simple Binary Tree Nodes, using them to explore how this works
+defstruct BareBiNode:
+    left:BareBiNode
+    right:BareBiNode
+
+; Interesting, this fails to compile, since there is no way to distinguish
+; between left and right multis with different return types.
+; defstruct BiNode <: BareBiNode:
+;     data:Int
+;     left:BiNode
+;     right:BiNode
+
+; Trying again
+deftype Node
+defmulti left (node:Node) -> Node
+defmulti set-left (node:Node, left:Node) -> False
+defmulti right (node:Node) -> Node
+defmulti set-right (node:Node, right:Node) -> False
+; Empty Node
+deftype Empty <: Node
+; TODO:: Later I found for DataNode, I wasn't sure how to define
+;        Empty, so I think this is probably the wrong way to do
+;        this.
+
+
+; I see, defstruct failed before because it automatically defines repeated multis
+; see: http://lbstanza.org/chapter4.html#anchor56
+; instead we have to add a new method instance for DataNode using the existing multi
+deftype DataNode<T> <: Node
+defmulti data<?T> (node:DataNode<?T>) -> T
+defmulti set-data<?T> (node:DataNode<?T>, data:T) -> False
+
+; Default Node Implementation
+defn Node (left:Node, right:Node) -> Node:
+    var _left:Node = left
+    var _right:Node = right
+    new Node :
+        defmethod left (this) : _left
+        defmethod set-left (this, left:Node) : _left = left
+        defmethod right (this) : _right
+        defmethod set-right (this, right:Node) : _right = right
+defn Node (left:Node) -> Node:
+    Node(left, new Empty)
+defn Node () -> Node:
+    Node(new Empty, new Empty)
+
+; Quick Sanity Check
+val some_tree = Node(Node(Node(new Empty, Node())), Node())
+defn count_nodes (root:Node) -> Int:
+    defn iter (node:Node):
+        label<Int> return:
+            match(node):
+                (e:Empty): return(0)
+                (n): return(iter(left(n)) + iter(right(n)) + 1)
+    iter(root)
+println("Tree has %_ nodes" % [count_nodes(some_tree)])
+defn depth_tree (root:Node) -> Int:
+    defn iter (node:Node):
+        label<Int> return:
+            match(node):
+                (e:Empty): return(0)
+                (n): return(max(iter(left(n)) + 1,
+                                iter(right(n)) + 1))
+    iter(root)
+println("Tree has depth %_" % [depth_tree(some_tree)])
+    
+    
+; DataNode Implementation
+defn DataNode<T> (data:T, left:DataNode<T>, right:DataNode<T>) -> DataNode<T>:
+    ; TODO:: I think I need to repeat the same left/right vars and methods ??
+    var _left:DataNode<T> = left
+    var _right:DataNode<T> = right
+    var _data:T = data
+    new DataNode :
+        defmethod left (this) : _left
+        defmethod set-left (this, left:DataNode<T>) : _left = left
+        defmethod right (this) : _right
+        defmethod set-right (this, right:DataNode<T>) : _right = right
+        defmethod data (this) : _data
+        defmethod set-data (this, data:T) : _data = data
+
+
