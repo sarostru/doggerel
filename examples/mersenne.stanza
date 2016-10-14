@@ -54,7 +54,6 @@ val upper_mask:Int = (~ lower_mask)
 
 ; seed it
 defn mt_seed (seed:Int):
-    println("mt_seed")
     index = n
     MT[0] = seed
     for i in 1 to n do:
@@ -65,7 +64,6 @@ defn mt_seed (seed:Int):
 mt_seed(default_seed)
 
 defn mt_rand () -> Int:
-    println("mt_rand")
     if index >= n:
         ; M. Night Shyamalan the shit out of it every n numbers
         mt_twist()
@@ -81,7 +79,6 @@ defn mt_rand () -> Int:
     y
     
 defn mt_twist ():
-    println("mt_twist")
     for i in 0 to n do:
         val x = (MT[i] & upper_mask) + (MT[(i + 1) % n] & lower_mask)
         var xA:Int = x >> 1
