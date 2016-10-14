@@ -1,0 +1,97 @@
+; Mersenne Twister 19937
+; Adapted from https://en.wikipedia.org/wiki/Mersenne_Twister
+val default_seed:Int = 41002897 ; lat/long of Istanbul
+
+; The general algorithm is characterized by the following quantities:
+; 
+;     w: word size (in number of bits)
+;     n: degree of recurrence
+;     m: middle word, an offset used in the recurrence relation defining the series x, 1 ≤ m < n
+;     r: separation point of one word, or the number of bits of the lower bitmask, 0 ≤ r ≤ w - 1
+;     a: coefficients of the rational normal form twist matrix
+;     b, c: TGFSR(R) tempering bitmasks
+;     s, t: TGFSR(R) tempering bit shifts
+;     u, d, l: additional Mersenne Twister tempering bit shifts/masks
+
+; The coefficients for MT19937 are:
+; 
+;     (w, n, m, r) = (32, 624, 397, 31)
+;     a = 9908B0DF16
+;     (u, d) = (11, FFFFFFFF16)
+;     (s, b) = (7, 9D2C568016)
+;     (t, c) = (15, EFC6000016)
+;     l = 18
+
+val w:Int = 32
+val n:Int = 624
+val m:Int = 397
+val r:Int = 31
+
+val u:Int = 11
+val s:Int = 7 
+val t:Int = 15
+val l:Int = 18
+
+; Unsigned Int masks are converted to Ints (mersenne_constants.c)
+; a: 0x9908B0DF -> -1727483681
+; d: 0xFFFFFFFF -> -1
+; b: 0x9D2C5680 -> -1658038656
+; c: 0xEFC60000 -> -272236544
+val a:Int = -1727483681
+val d:Int = -1
+val b:Int = -1658038656
+val c:Int = -272236544
+
+; The constant f forms another parameter to the generator, though not part of the algorithm proper.
+val f:Int = 1812433253
+
+; TODO:: Wrap in an object
+val MT:Array<Int> = Array<Int>(n)
+var index:Int = n + 1
+val lower_mask:Int = (1 << r) - 1  ; That is, the binary number of r 1's
+; TODO:: hardcoding for w = 32, It's supposed to be w lowest bits of (not lower_mask)
+val upper_mask:Int = (~ lower_mask)
+
+; seed it
+defn mt_seed (seed:Int):
+    println("mt_seed")
+    index = n
+    MT[0] = seed
+    for i in 1 to n do:
+        ; TODO:: hardcoding for w = 32, should be w lowest bits
+        MT[i] = f * (MT[i - 1] ^ (MT[i - 1] >> (w - 2))) + i
+
+; Initialize to the default seed
+mt_seed(default_seed)
+
+defn mt_rand () -> Int:
+    println("mt_rand")
+    if index >= n:
+        ; M. Night Shyamalan the shit out of it every n numbers
+        mt_twist()
+    ; TODO:: Condense this so it doesn't need a var
+    var y:Int = MT[index]
+    y = y ^ ((y >> u) & d)
+    y = y ^ ((y << s) & b)
+    y = y ^ ((y << t) & c)
+    y = y ^ (y >> l) 
+
+    index = index + 1
+    ; TODO:: hardcoding for w = 32
+    y
+    
+defn mt_twist ():
+    println("mt_twist")
+    for i in 0 to n do:
+        val x = (MT[i] & upper_mask) + (MT[(i + 1) % n] & lower_mask)
+        var xA:Int = x >> 1
+        ; N.B. Had to deviate from wiki impl here, since we have Ints,
+        ;      so (x % 2) isn't equivalent to the lowest bit because of negatives.
+        if (x & 1) == 1:
+            xA = xA ^ a
+        MT[i] = MT[(i + m) % n] ^ xA
+    index = 0
+    
+; TODO:: Check if it is actually working or just looks like it
+for i in 0 to 100 do:
+    println("%_: %_" % [i mt_rand()])
