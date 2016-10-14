@@ -85,8 +85,6 @@ defn mt_twist ():
     for i in 0 to n do:
         val x = (MT[i] & upper_mask) + (MT[(i + 1) % n] & lower_mask)
         var xA:Int = x >> 1
-        ; N.B. Had to deviate from wiki impl here, since we have Ints,
-        ;      so (x % 2) isn't equivalent to the lowest bit because of negatives.
         if (x & 1) == 1:
             xA = xA ^ a
         MT[i] = MT[(i + m) % n] ^ xA
