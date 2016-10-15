@@ -16,10 +16,10 @@ val default_seed:Int = 41002897 ; lat/long of Istanbul
 ; The coefficients for MT19937 are:
 ; 
 ;     (w, n, m, r) = (32, 624, 397, 31)
-;     a = 9908B0DF16
-;     (u, d) = (11, FFFFFFFF16)
-;     (s, b) = (7, 9D2C568016)
-;     (t, c) = (15, EFC6000016)
+;     a = 9908B0DF
+;     (u, d) = (11, FFFFFFFF)
+;     (s, b) = (7, 9D2C5680)
+;     (t, c) = (15, EFC60000)
 ;     l = 18
 
 val w:Int = 32

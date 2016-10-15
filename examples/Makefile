@@ -1,9 +1,3 @@
-mersenne: mersenne.stanza
-	stanza mersenne.stanza -o mersenne
-
-mersenne_constants: mersenne_constants.c
-	gcc -o mersenne_constants mersenne_constants.c
-
 subtyping: subtyping.stanza
 	stanza subtyping.stanza -o subtyping
 

@@ -1,0 +1,32 @@
+; Kolmogorov-Smirnov Test
+
+defn Fn<?T> (xs:Seqable<?T>, x:T):
+    do({
+       xs)
+    val n = length(vals)
+    val n_below = {_ <= x}(vals) 
+
+; TODO:: Versions for sequences and Int types
+defn KS_test (xs:Array<Float>):
+    ; Uniform Distribution:
+    ; PDF = 1 / (b - a)     for x in [a, b],
+    ;       0               otherwise
+    ; CDF = 0               for x < a
+    ;       x - a / (b - a) for x in [a, b)
+    ;       1               for x >= b
+    ; In this test, we see how close the input sequences approximate CDF is to the assumed Uniform CDF
+
+    ; The test computes two quantities, the largest positive deviation and the largest negative deviation
+    ; F(x) = CDF(x)
+    ; Kn_plus  = sqrt(n) * max_x(Fn(x) - F(x))
+    ; Kn_minus = sqrt(n) * max_x(F(x) - Fn(x))
+
+    ; Then we can compare these with probabilities, if we take a large n we see global behaviour
+    ; for smaller n, we will see more local randomness
+    qsort!(xs)
+    val Kn_plus = 
+    
+        
+        
+    var K
+    7
