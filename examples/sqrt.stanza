@@ -50,7 +50,9 @@ val delta = 1.0e-8
 
 for x in [0.0 1.0 2.0 4.0 9.0 100.0 10000.0 81.0] do:
     println("*******************")
-    println("sqrt(%_) = ..." % [x])
+    println("sqrt(%_) ..." % [x])
+    val y = my-sqrt(x max_iter delta rel_tol abs_tol)
     println("*******************")
-    println("sqrt(%_) = %_" % [x my-sqrt(x max_iter delta rel_tol abs_tol)])
+    println("my-sqrt(%_) = %_" % [x y])
+    println("*******************")
 
