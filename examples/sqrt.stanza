@@ -1,0 +1,56 @@
+
+defn is-close? (a:Double b:Double, rel_tol:Double, abs_tol:Double) -> True|False:
+    ; Nice version of is-close? Lifted from Chris Barker's PEP 485 proposal, https://www.python.org/dev/peps/pep-0485/
+    ; Default rtol = 1e-9 and default atol=0.0, but basically these are application specific numbers
+    ; and should always be specified, those numbers will just not be too surprising for naive usage
+    abs(a - b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
+    
+
+defn fixed-point (f:Double -> Double, guess:Double, max_iter:Int, rel_tol:Double, abs_tol:Double) -> Maybe<Double>:
+    var elast = abs(guess - f(guess))
+    defn try-guess (i:Int, x:Double):
+        label<Maybe<Double>> return:
+            val y = f(x)
+            val ecurr = abs(y - x)
+            val edelta = elast / ecurr
+            println("fixed-point: iter = %~, elast/ecurr = %~ x = %~, f(x) = %~" % [i edelta x y])
+            if is-close?(x, y, rel_tol, abs_tol):
+                return(One(y))
+            else if i == max_iter:
+                return(None())
+            else:
+                elast = ecurr
+                try-guess(i + 1, y)
+    try-guess(0, guess)
+
+defn apx-deriv (g:Double -> Double, delta:Double):
+    fn (x:Double):
+        (g(x + delta) - g(x)) / delta
+
+defn newton-step (g:Double -> Double, delta:Double):
+    fn (x:Double):
+        x - (g(x) / apx-deriv(g, delta)(x))
+
+defn newtons-method (f:Double -> Double, guess:Double, max_iter:Int, delta:Double, rel_tol:Double, abs_tol:Double) -> Maybe<Double>:
+    fixed-point(newton-step(f, delta), guess, max_iter, rel_tol, abs_tol)
+
+
+defn my-sqrt (x:Double, max_iter:Int, delta:Double, rel_tol:Double, abs_tol:Double) -> Double:
+    val first-guess = 1.0
+    match(newtons-method(fn (y:Double):
+                           (y * y) - x
+                         first-guess, max_iter, delta, rel_tol, abs_tol)):
+        (y:One<Double>): value(y)
+        (y:None): fatal("Error: bad input to sqrt")
+
+val max_iter = 20
+val rel_tol = 1.0e-8
+val abs_tol = 1.0e-4
+val delta = 1.0e-8
+
+for x in [0.0 1.0 2.0 4.0 9.0 100.0 10000.0 81.0] do:
+    println("*******************")
+    println("sqrt(%_) = ..." % [x])
+    println("*******************")
+    println("sqrt(%_) = %_" % [x my-sqrt(x max_iter delta rel_tol abs_tol)])
+

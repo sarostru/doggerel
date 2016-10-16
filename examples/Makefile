@@ -1,3 +1,5 @@
+sqrt: sqrt.stanza
+	stanza sqrt.stanza -o sqrt
 subtyping: subtyping.stanza
 	stanza subtyping.stanza -o subtyping
 
