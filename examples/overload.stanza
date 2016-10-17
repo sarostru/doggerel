@@ -9,6 +9,21 @@ println("x is Double %_ F(%_) = %_" % [x is Double x F(x)])
 val y = 1.0f
 println("y is Float  %_ F(%_) = %_" % [y is Float y F(y)])
     
-; val F_impl_form = `(
-;     defn F_impl (x:T) -> T:
-;         x * x - 3.0)
+defpackage overload-main:
+    import core
+    import macro-utils
+    import parser
+
+val F_form = `(
+    defn F_impl (x:T) -> T:
+        x * x - V)
+
+val F_replacements = [
+    `T => `Double
+    `V => `3.0
+]
+val filled = fill-template(F_form, F_replacements)
+println("filled = %_" % [filled])
+val F_impl = compile(filled)
+val z = F_impl(3.0)
+print("F_impl(3.0) = %_" % [z])
