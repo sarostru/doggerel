@@ -1,0 +1,14 @@
+defn F (x:Double) -> Double:
+    x * x - 3.0
+
+defn F (x:Float) -> Float:
+    x * x - 3.0f
+ 
+val x = 1.0
+println("x is Double %_ F(%_) = %_" % [x is Double x F(x)])
+val y = 1.0f
+println("y is Float  %_ F(%_) = %_" % [y is Float y F(y)])
+    
+; val F_impl_form = `(
+;     defn F_impl (x:T) -> T:
+;         x * x - 3.0)

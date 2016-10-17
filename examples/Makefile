@@ -1,5 +1,9 @@
+overload: overload.stanza
+	stanza overload.stanza -o overload
+
 sqrt: sqrt.stanza
 	stanza sqrt.stanza -o sqrt
+
 subtyping: subtyping.stanza
 	stanza subtyping.stanza -o subtyping
 

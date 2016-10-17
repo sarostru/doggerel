@@ -1,3 +1,6 @@
+defpackage kolmogorov-smirnov:
+    import core
+    import math
 ; Kolmogorov-Smirnov Test
 
 defn Fn<?T> (xs:Seqable<?T>, x:T):
@@ -6,8 +9,18 @@ defn Fn<?T> (xs:Seqable<?T>, x:T):
     val n = length(vals)
     val n_below = {_ <= x}(vals) 
 
+
+defn Uniform_CDF<T> (x:T, a:T, b:T):
+    label<T> return
+    if x < a:
+        return(T(0.0))
+    else if x < b:
+        return((x - a) / (b - a))
+    else:
+        return(T(1.0))
+
 ; TODO:: Versions for sequences and Int types
-defn KS_test (xs:Array<Float>):
+defn KS_test<T> (xs:Array<T>, CDF):
     ; Uniform Distribution:
     ; PDF = 1 / (b - a)     for x in [a, b],
     ;       0               otherwise
@@ -23,8 +36,12 @@ defn KS_test (xs:Array<Float>):
 
     ; Then we can compare these with probabilities, if we take a large n we see global behaviour
     ; for smaller n, we will see more local randomness
-    qsort!(xs)
-    val Kn_plus = 
+    val n:Double = length(xs)
+    val Kn_plus = sqrt(n) * maximum(seq(fn (j xj):
+                                           j / n - F(xj)
+                                        i in 0 to length(xs),
+                                        xs))
+    val Kn_minus
     
         
         
