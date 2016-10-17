@@ -1,0 +1,6 @@
+defpackage test-math:
+    import core
+    import math
+
+for x in [0.0 1.0 2.0 25.0 100.0] do:
+    println("sqrt(%_) = %_" % [x sqrt(x)])

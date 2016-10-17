@@ -1,0 +1,10 @@
+defpackage math:
+    import core
+
+protected extern sqrt: double -> double
+
+public lostanza defn sqrt (x:ref<Double>) -> ref<Double>:
+    return new Double{call-c math/sqrt(x.value)}
+
+public lostanza defn sqrt (x:ref<Float>) -> ref<Float> :
+    return new Float{call-c math/sqrt(x.value) as float}
