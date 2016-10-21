@@ -1,3 +1,12 @@
+STANZA_DIR := /home/scott/repos/lbstanza/compiler
+THIS_DIR := /home/scott/repos/doggerel/examples
+
+myprog: myprog.stanza exstanza
+	$(THIS_DIR)/exstanza myprog.stanza -o myprog
+
+exstanza: mymacros.stanza
+	stanza mymacros.stanza $(STANZA_DIR)/stz-main.stanza -o exstanza
+
 overload: overload.stanza
 	stanza overload.stanza -o overload
 
