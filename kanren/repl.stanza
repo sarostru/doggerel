@@ -1,0 +1,19 @@
+
+defpackage repl :
+    import core
+    import reader
+
+println("Hello there!  Welcome to the repl!")
+
+val stdin = STANDARD-INPUT-STREAM
+
+defn read-char () -> Maybe<Char> :
+    val c = get-char(stdin) as Char
+    One(c) when c != '\n' else None()
+    
+while true:
+    print("(\\\")> ")
+    val s:String = String(repeat-while(read-char))
+    println("Got %_" % [s])
+    val exps = read-all(s)
+    println("Sexps %_" % [exps])

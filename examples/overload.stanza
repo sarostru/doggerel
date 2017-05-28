@@ -1,12 +1,17 @@
+; overloaded functions will do compile time dispatch
 defn F (x:Double) -> Double:
     x * x - 3.0
 
 defn F (x:Float) -> Float:
     x * x - 3.0f
+
+; Can't write this
+; defn F<T> (x:T) -> T:
+;    x * x - T(3.0)
  
-val x = 1.0
+val x:Double = 1.0
 println("x is Double %_ F(%_) = %_" % [x is Double x F(x)])
-val y = 1.0f
+val y:Float = 1.0f
 println("y is Float  %_ F(%_) = %_" % [y is Float y F(y)])
     
 defpackage overload-main:

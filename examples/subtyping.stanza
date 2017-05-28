@@ -10,6 +10,7 @@ deftype Microphone <: Listener
 defstruct Reporter <: Ears&Microphone:
     name:String
 
+; defmulti is runtime dispatch
 defmulti hears (listener:Listener, message:String) -> False
 
 ; Default Implementation
@@ -27,6 +28,18 @@ val april = Reporter("April O'Neil")
 ; hears(april, "Cowabunga!")
 
 ; Neat, so it bails rather then trying to figure out something, makes sense
+
+; the ?T type can be used for universal polymorphism
+defn extract-first<?T> (A:Array<?T>) -> T:
+    A[0]
+
+val some_list = Array<Int>(3)
+some_list[0] = 1
+some_list[1] = 2
+some_list[2] = 3
+
+println("some_list = %_" % [some_list])
+println("some_list[0] = %_" % [extract-first(some_list)])
 
 ; Simple Binary Tree Nodes, using them to explore how this works
 defstruct BareBiNode:
