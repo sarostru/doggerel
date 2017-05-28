@@ -2,36 +2,21 @@
 defpackage repl :
     import core
     import reader
+    import typeof
 
-defn eval (token) :
-    val s-exp = unwrap-all(token) 
+
+defn eval (s-exp) :
     println("s-exp = %_" % [s-exp])
-    val tag = s-exp[0]
-    println("tag = %_" % [tag])
 
-    if to-symbol(tag) == to-symbol('+'):
-        println("%_ + %_ = %_" % [s-exp[1], s-exp[2], s-exp[1] + s-exp[2] as Int])
+    if s-exp[0] == `+ :
+        println("%_ + %_ = %_" % [s-exp[1], s-exp[2], s-exp[1] + s-exp[2]])
     else:
         println("Not +")
 
 println("Hello there!  Welcome to the repl!")
 
-val stdin = STANDARD-INPUT-STREAM
-
-; This input mechanism isn't quite right, should be read until S-exp is complete
-; instead of waiting for newline
-defn read-char () -> Maybe<Char> :
-    ; The union return type was pretty confusing with how it interacts here
-    ; You get False when you hit Ctrl-D that gives an exception at the moment
-    val c = get-char(stdin) as Char
-    One(c) when c != '\n' else None()
-    
 while true:
     print("(\\\")> ")
-    val s:String = String(repeat-while(read-char))
-    try:
-        val exps = read-all(s)
-        eval(exps[0])
-    catch (e) :
-        println("Not S exp. e = %_" % [e])
-
+    val form = unwrap-all(read-line(STANDARD-INPUT-STREAM))
+    for s-exp in form do:
+        eval(s-exp)

@@ -1,0 +1,31 @@
+defpackage typeof:
+    import core
+
+lostanza deftype ObjectMap :
+   name: ptr<byte>
+   base-size: int
+   tail-size: int
+   bits: long ...
+
+lostanza defn object-map (tag:long) -> ptr<ObjectMap> :
+   val table = call-prim object-table() as ptr<ptr<ObjectMap>>
+   return table[tag]
+
+public lostanza defn object-type (x:ref<?>) -> ref<String> :
+  match(x) :
+    ;Primitive Tags
+    (x:ref<Byte>) : return String("Byte")
+    (x:ref<Int>) : return String("Int")
+    (x:ref<Char>) : return String("Char")
+    (x:ref<Float>) : return String("Float")
+    (x:ref<?>) :
+      val tagbits = (x as long) & 0x7L
+      ;Retrieve tag
+      var tag:long
+      if tagbits == 2L :
+        tag = (x as long) >> 3L
+      else :
+        tag = [x as ptr<long> - tagbits]
+      ;Retrieve name in object table
+      return String(object-map(tag).name)
+
