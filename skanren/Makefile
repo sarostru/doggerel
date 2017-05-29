@@ -1,2 +1,2 @@
-skanren: repl.stanza typeof.stanza skanren.stanza
-	stanza typeof.stanza skanren.stanza repl.stanza -o skanren
+skanren: repl.stanza typeof.stanza scheme.stanza
+	stanza typeof.stanza scheme.stanza repl.stanza -o skanren

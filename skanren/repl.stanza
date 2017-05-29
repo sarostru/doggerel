@@ -7,8 +7,12 @@ defpackage repl :
 
 println("Hello there!  Welcome to the repl!")
 
+val universe = Universe()
+
 while true:
     print("(\\\")> ")
     val form = unwrap-all(read-line(STANDARD-INPUT-STREAM))
     for s-exp in form do:
-        eval(s-exp)
+        eval(universe, s-exp)
+    println("length(universe) = %_" % [length(universe)])
+    println("universe = [%,]" % [universe])

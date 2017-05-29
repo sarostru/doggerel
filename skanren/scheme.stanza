@@ -1,0 +1,89 @@
+defpackage skanren:
+    import core
+    import collections
+    import typeof
+
+; mukanren commands
+; `(var, var?, var=?)
+; `(walk, ext-s, u=)
+; `(unit, mzero)
+; `(unify)
+; `(call/fresh)
+; `(conj, disj)
+; `(mplus, bind)
+
+; support functionality I probably need to implement it in 
+; a similar way to the paper
+; `(lambda, apply, define)
+; `(print)
+
+; TODO:: How to define aliases for types?
+; deftype PrimitiveType = Int|String
+; deftype Expression = List|PrimitiveType
+
+defn make-env ():
+    HashTable<StringSymbol, List|Int|String>()
+
+
+; How to do type aliases?
+; defstruct Environment <: HashTable<StringSymbol, List|Int|String>
+deftype Universe <: Table<StringSymbol, List|Int|String>
+
+
+public defn Universe ():
+    val universe = Vector<HashTable<StringSymbol, List|Int|String>
+>()
+    add(universe, HashTable<StringSymbol, List|Int|String>())
+    new Universe :
+        ; Table Implementation Methods
+        defmethod to-seq (this):
+            cat-all(universe)
+        defmethod length (this):
+            sum(seq(length, universe))
+        defmethod set (this, k:StringSymbol, v):
+            match(find(key?{_, k}, in-reverse(universe))):
+                (env:Table) : set(env, k, v)
+                (env:False) : set(peek(universe), k, v)
+        defmethod get? (this, k, d):
+            match(find(key?{_, k}, in-reverse(universe))):
+                (env:Table) : get?(env, k)
+                (env:False) : d 
+        defmethod remove (this, k:StringSymbol):
+            match(find(key?{_, k}, in-reverse(universe))):
+                (env:Table) : remove(env, k)
+                (env:False) : false
+        defmethod clear (this):
+            clear(universe)
+
+
+defn apply (env, args, body) :
+    ; extend environment
+    ; eval in that environment
+    ; clean up
+    0
+
+defn eval-exp (env, s-exp) :
+    val L = s-exp
+    ; curly braces are partial function evaluation
+    switch {L[0] == _}:
+        `+ : 
+            println("%_ + %_ = %_" % [L[1], L[2], L[1] + L[2]])
+        `define :
+            println("define(%_, %_)" % [L[1], L[2]])
+            set(env, L[1], L[2])
+        `lambda :
+            println("lambda: %@" % [L])
+            println("lambda-types: %@" % [seq(object-type, L)])
+            L
+        else : println("else clause")
+
+public defn eval (env, s-exp) :
+    println("s-exp = %_, type = %_" % [s-exp, object-type(s-exp)])
+    match(s-exp):
+        (i:Int) : println("Int(%_)" % [i])
+        (s:String) : println("String(%_)" % [s])
+        (x:StringSymbol) : println("%_ = %_" % [x, get?(env, x)])
+        (L:List) :
+            match(L[0]):
+                (l:StringSymbol) : eval-exp(env, L)
+                (l:List) : apply(env, L[1], L[2])
