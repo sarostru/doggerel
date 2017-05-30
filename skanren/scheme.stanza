@@ -28,6 +28,9 @@ defn make-env ():
 ; How to do type aliases?
 ; defstruct Environment <: HashTable<StringSymbol, List|Int|String>
 deftype Universe <: Table<StringSymbol, List|Int|String>
+defmulti add-layer (env:Universe) -> False
+defmulti remove-layer (env:Universe) -> False
+defmulti set-direct (env:Universe, k:StringSymbol, v) -> False|List|Int|String
 
 
 public defn Universe ():
@@ -42,11 +45,11 @@ public defn Universe ():
             sum(seq(length, universe))
         defmethod set (this, k:StringSymbol, v):
             match(find(key?{_, k}, in-reverse(universe))):
-                (env:Table) : set(env, k, v)
-                (env:False) : set(peek(universe), k, v)
+                (env:Table) : env[k] = v
+                (env:False) : peek(universe)[k] = v
         defmethod get? (this, k, d):
             match(find(key?{_, k}, in-reverse(universe))):
-                (env:Table) : get?(env, k)
+                (env:Table) : env[k]
                 (env:False) : d 
         defmethod remove (this, k:StringSymbol):
             match(find(key?{_, k}, in-reverse(universe))):
@@ -54,53 +57,73 @@ public defn Universe ():
                 (env:False) : false
         defmethod clear (this):
             clear(universe)
-        ; Universe specifics
-        defn add-layer (this):
+
+        ; Universe specific function calls
+        defmethod add-layer (this):
             add(universe, HashTable<StringSymbol, List|Int|String>())
-        defn remove-layer (this):
-            add(universe, HashTable<StringSymbol, List|Int|String>())
+        defmethod remove-layer (this):
+            pop(universe)
+            false
+        defmethod set-direct (this, k, v):
+            peek(universe)[k] = v
 
 
-defn apply (env, lambda, args) :
+defn apply (env, lambda, args) -> False|List|Int|String:
+    println("apply: lambda = %_, args = %_" % [lambda, args])
     val arg_names = lambda[1]
     val body = lambda[2]
     ; no laziness here, eval those args!
     val evaled-args = map({eval(env, _)}, args)
     ; extend environment
     add-layer(env)
-    map({env[gensym(_)] = _}, arg_names, evaled-args)
-    println("apply: universe = %," % [env])
+    ; map({env[gensym(_)] = _}, arg_names, evaled-args)
+    map({set-direct(env, _, _)}, arg_names, evaled-args)
+    println("apply: env = %," % [env])
+    println("apply: body = %_" % [body])
     ; eval in that environment
     val result = eval(env, body)
+    println("apply: result = %_" % [result])
     ; clean up
     remove-layer(env)
     result
 
 
-defn eval-exp (env, s-exp) :
+defn eval-exp (env:Universe, s-exp) -> False|List|Int|String:
     val L = s-exp
     ; curly braces are partial function evaluation
     switch {head(L) == _}:
         `+ : 
-            println("%_ + %_ = %_" % [L[1], L[2], L[1] + L[2]])
-            L[1] + L[2]
+            val a = eval(env, L[1]) as Int
+            val b = eval(env, L[2]) as Int
+            val c:Int = a + b
+            println("%_ + %_ = %_" % [a, b, c])
+            c
         `define :
             println("define(%_, %_)" % [L[1], L[2]])
-            set(env, L[1], eval(env, L[2]))
+            match(eval(env, L[2])):
+                (v:List|Int|String) : env[L[1]] = v
+                (v:False) : false
         `lambda :
             println("lambda: %@" % [L])
             println("lambda-types: %@" % [seq(object-type, L)])
             L
-        else : println("else clause")
+        else :
+            eval(env, cons(eval(env, head(L)), tail(L))) 
 
 
-public defn eval (env, s-exp) :
+public defn eval (env:Universe, s-exp) -> False|List|Int|String:
     println("s-exp = %_, type = %_" % [s-exp, object-type(s-exp)])
     match(s-exp):
-        (i:Int) : println("Int(%_)" % [i])
-        (s:String) : println("String(%_)" % [s])
-        (x:StringSymbol) : println("%_ = %_" % [x, get?(env, x)])
+        (i:Int) :
+            println("Int(%_)" % [i])
+            i
+        (s:String) :
+            println("String(%_)" % [s])
+            s
+        (x:StringSymbol) :
+            println("%_ = %_" % [x, get?(env, x)])
+            env[x]
         (L:List) :
             match(head(L)):
                 (l:StringSymbol) : eval-exp(env, L)
-                (l:List) : apply(env, L[1], tailn(L, 2))
+                (l:List) : apply(env, head(L), tail(L))
