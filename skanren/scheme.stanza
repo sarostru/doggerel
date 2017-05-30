@@ -54,28 +54,45 @@ public defn Universe ():
                 (env:False) : false
         defmethod clear (this):
             clear(universe)
+        ; Universe specifics
+        defn add-layer (this):
+            add(universe, HashTable<StringSymbol, List|Int|String>())
+        defn remove-layer (this):
+            add(universe, HashTable<StringSymbol, List|Int|String>())
 
 
-defn apply (env, args, body) :
+defn apply (env, lambda, args) :
+    val arg_names = lambda[1]
+    val body = lambda[2]
+    ; no laziness here, eval those args!
+    val evaled-args = map({eval(env, _)}, args)
     ; extend environment
+    add-layer(env)
+    map({env[gensym(_)] = _}, arg_names, evaled-args)
+    println("apply: universe = %," % [env])
     ; eval in that environment
+    val result = eval(env, body)
     ; clean up
-    0
+    remove-layer(env)
+    result
+
 
 defn eval-exp (env, s-exp) :
     val L = s-exp
     ; curly braces are partial function evaluation
-    switch {L[0] == _}:
+    switch {head(L) == _}:
         `+ : 
             println("%_ + %_ = %_" % [L[1], L[2], L[1] + L[2]])
+            L[1] + L[2]
         `define :
             println("define(%_, %_)" % [L[1], L[2]])
-            set(env, L[1], L[2])
+            set(env, L[1], eval(env, L[2]))
         `lambda :
             println("lambda: %@" % [L])
             println("lambda-types: %@" % [seq(object-type, L)])
             L
         else : println("else clause")
+
 
 public defn eval (env, s-exp) :
     println("s-exp = %_, type = %_" % [s-exp, object-type(s-exp)])
@@ -84,6 +101,6 @@ public defn eval (env, s-exp) :
         (s:String) : println("String(%_)" % [s])
         (x:StringSymbol) : println("%_ = %_" % [x, get?(env, x)])
         (L:List) :
-            match(L[0]):
+            match(head(L)):
                 (l:StringSymbol) : eval-exp(env, L)
-                (l:List) : apply(env, L[1], L[2])
+                (l:List) : apply(env, L[1], tailn(L, 2))
