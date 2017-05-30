@@ -108,7 +108,8 @@ defn eval-exp (env:Universe, s-exp) -> False|List|Int|String:
             println("lambda-types: %@" % [seq(object-type, L)])
             L
         else :
-            eval(env, cons(eval(env, head(L)), tail(L))) 
+            val lambda = eval(env, head(L))
+            eval(env, cons(lambda, tail(L))) 
 
 
 public defn eval (env:Universe, s-exp) -> False|List|Int|String:
