@@ -10,6 +10,10 @@ println("Hello there!  Welcome to the repl!")
 val universe = Universe()
 
 while true:
+    ; Other possible prompts
+    ; ~~(__^·>
+    ; ><((((‘>
+    ; <(‘–‘)>
     print("(\\\")> ")
     val form = unwrap-all(read-line(STANDARD-INPUT-STREAM))
     for s-exp in form do:

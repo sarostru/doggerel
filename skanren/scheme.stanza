@@ -21,22 +21,21 @@ defpackage skanren:
 ; deftype PrimitiveType = Int|String
 ; deftype Expression = List|PrimitiveType
 
-defn make-env ():
-    HashTable<StringSymbol, List|Int|String>()
+; defn make-env ():
+;     HashTable<StringSymbol, List|Int|String>()
 
 
 ; How to do type aliases?
 ; defstruct Environment <: HashTable<StringSymbol, List|Int|String>
-deftype Universe <: Table<StringSymbol, List|Int|String>
+deftype Universe <: Table<StringSymbol, True|False|List|Array|Int|String>
 defmulti add-layer (env:Universe) -> False
 defmulti remove-layer (env:Universe) -> False
-defmulti set-direct (env:Universe, k:StringSymbol, v) -> False|List|Int|String
+defmulti set-direct (env:Universe, k:StringSymbol, v) -> False
 
 
 public defn Universe ():
-    val universe = Vector<HashTable<StringSymbol, List|Int|String>
->()
-    add(universe, HashTable<StringSymbol, List|Int|String>())
+    val universe = Vector<HashTable<StringSymbol, True|False|List|Array|Int|String>>()
+    add(universe, HashTable<StringSymbol, True|False|List|Array|Int|String>())
     new Universe :
         ; Table Implementation Methods
         defmethod to-seq (this):
@@ -60,7 +59,7 @@ public defn Universe ():
 
         ; Universe specific function calls
         defmethod add-layer (this):
-            add(universe, HashTable<StringSymbol, List|Int|String>())
+            add(universe, HashTable<StringSymbol, True|False|List|Array|Int|String>())
         defmethod remove-layer (this):
             pop(universe)
             false
@@ -68,7 +67,7 @@ public defn Universe ():
             peek(universe)[k] = v
 
 
-defn apply (env, lambda, args) -> False|List|Int|String:
+defn apply (env, lambda, args) -> True|False|List|Array|Int|String:
     println("apply: lambda = %_, args = %_" % [lambda, args])
     val arg_names = lambda[1]
     val body = lambda[2]
@@ -88,7 +87,22 @@ defn apply (env, lambda, args) -> False|List|Int|String:
     result
 
 
-defn eval-exp (env:Universe, s-exp) -> False|List|Int|String:
+defn eval-cond (env:Universe, L) -> True|False|List|Array|Int|String:
+    ; Not handling else correctly here, also not sure about what correct behaviour is
+    ; if nothing matches, do nothing or raise error?
+    defn eval-item (v):
+        if head(v) == `else :
+            One(last(v))
+        else:
+            match(eval(env, head(v))):
+                (r:True) : One(last(v))
+                (r:False) : None()
+    match(first(eval-item, L)):
+        (v:One) : eval(env, value(v)) 
+        (v:None) : false
+
+
+defn eval-exp (env:Universe, s-exp) -> True|False|List|Array|Int|String:
     val L = s-exp
     ; curly braces are partial function evaluation
     switch {head(L) == _}:
@@ -100,21 +114,77 @@ defn eval-exp (env:Universe, s-exp) -> False|List|Int|String:
             c
         `define :
             println("define(%_, %_)" % [L[1], L[2]])
-            match(eval(env, L[2])):
-                (v:List|Int|String) : env[L[1]] = v
-                (v:False) : false
+            ; I think we need to wrap everything in Maybes, since by adding booleans I have
+            ; mixed up the meaning of false, in the first pass false wasn't in the language so 
+            ; it meant an underlying language thing only, but now define returns false so it
+            ; can work as part of a predicate which is weird
+            env[L[1]] = eval(env, L[2])
         `lambda :
             println("lambda: %@" % [L])
             println("lambda-types: %@" % [seq(object-type, L)])
             L
+        `procedure? :
+            println("procedure? %_" % [L[1]])
+            match(eval(env, L[1])):
+                (v:List) :
+                    false when empty?(v) else head(v) == `lambda
+                (v:True|False|Int|String) : false
+        `let :
+            println("let %@" % [tail(L)])
+            val lambda = List(`lambda, map(head, L[1]), L[2])
+            val args = map(last, L[1])
+            apply(env, lambda, args)
+        `cond :
+            println("cond %@" % [tail(L)])
+            eval-cond(env, tail(L))
+        `= :
+            println("= %@" % [tail(L)])
+            eval(env, L[1]) == eval(env, L[2])
+        `if :
+            println("if %@" % [tail(L)])
+            val cond-exp = List(List(L[1], L[2]), List(`else, L[3]))
+            eval-cond(env, cond-exp)
+        `and :
+            println("and %@" % [tail(L)])
+            var acc = true
+            label<False> break:
+                for v in tail(L) do:
+                    acc = acc and (eval(env, v) as True|False)
+                    if not acc: break(false)
+            acc
+        `cons :
+            println("cons %@" % [tail(L)])
+            cons(eval(env, L[1]), eval(env, L[2]) as List)
+        `car :
+            println("car %@" % [tail(L)])
+            head(eval(env, L[1]) as List)
+        `cdr :
+            println("cdr %@" % [tail(L)])
+            tail(eval(env, L[1]) as List)
+        `null? :
+            println("null? %@" % [tail(L)])
+            eval(env, L[1]) == `()
+        `vector :
+            println("vector %@" % [tail(L)])
+            to-array<True|False|List|Array|Int|String>(map({eval(env, _)}, tail(L)))
+        `vector-ref :
+            println("vector-ref %@" % [tail(L)])
+            get(eval(env, L[1]) as Array, eval(env, L[2]) as Int)
+        `@quote :
+            println("quote %@" % [tail(L)])
+            ; Not sure how to implement this? Can probably do without
+            tail(L)
         else :
             val lambda = eval(env, head(L))
             eval(env, cons(lambda, tail(L))) 
 
 
-public defn eval (env:Universe, s-exp) -> False|List|Int|String:
+public defn eval (env:Universe, s-exp) -> True|False|List|Array|Int|String:
     println("s-exp = %_, type = %_" % [s-exp, object-type(s-exp)])
     match(s-exp):
+        (b:True|False) :
+            println("Bool(%_)" % [b])
+            b
         (i:Int) :
             println("Int(%_)" % [i])
             i
@@ -125,6 +195,9 @@ public defn eval (env:Universe, s-exp) -> False|List|Int|String:
             println("%_ = %_" % [x, get?(env, x)])
             env[x]
         (L:List) :
-            match(head(L)):
-                (l:StringSymbol) : eval-exp(env, L)
-                (l:List) : apply(env, head(L), tail(L))
+            if empty?(L):
+                L
+            else:
+                match(head(L)):
+                    (l:StringSymbol) : eval-exp(env, L)
+                    (l:List) : apply(env, head(L), tail(L))
