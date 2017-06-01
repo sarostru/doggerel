@@ -31,7 +31,7 @@ deftype Environment <: Table<StringSymbol, True|False|List|Array|Int|String>
 deftype EmptyEnvironment <: Environment
 defmulti parent (env:Environment) -> Environment
 defmulti set-direct (env:Environment, k:StringSymbol, v) -> False
-defmulti to-env-seq (env:Environment) -> List<HashTable<StringSymbol, True|False|List|Array|Int|String>>
+defmulti to-env-list (env:Environment) -> List<HashTable<StringSymbol, True|False|List|Array|Int|String>>
 
 
 public defn Environment (parent:Environment) -> Environment:
@@ -49,7 +49,7 @@ public defn Environment (parent:Environment) -> Environment:
                 (p:Environment) : length(p) + length(env)
         defmethod set (this, k:StringSymbol, v):
             println("set: %_ %_" % [k, v])
-            match(find(key?{_, k}, to-env-seq(this))):
+            match(find(key?{_, k}, to-env-list(this))):
                 (f_env:Table) :
                     println("set: f_env = %@" % [f_env])
                     f_env[k] = v
@@ -58,14 +58,14 @@ public defn Environment (parent:Environment) -> Environment:
                     env[k] = v
                     println("set: f_env = false, setting in env = %@" % [env])
         defmethod get? (this, k:StringSymbol, d):
-            match(find(key?{_, k}, to-env-seq(this))):
+            match(find(key?{_, k}, to-env-list(this))):
                 (f_env:Table) : f_env[k]
                 (f_env:False) : d
         defmethod get (this, k:StringSymbol):
-            println("to-env-seq %@" % [to-env-seq(this)])
-            find!(key?{_, k}, to-env-seq(this))[k]
+            println("to-env-list %@" % [to-env-list(this)])
+            find!(key?{_, k}, to-env-list(this))[k]
         defmethod remove (this, k:StringSymbol):
-            match(find(key?{_, k}, to-env-seq(this))):
+            match(find(key?{_, k}, to-env-list(this))):
                 (f_env:Table) : remove(f_env, k)
                 (f_env:False) : false
         defmethod clear (this):
@@ -78,10 +78,11 @@ public defn Environment (parent:Environment) -> Environment:
         defmethod parent (this) : _parent
         defmethod set-direct (this, k, v):
             env[k] = v
-        defmethod to-env-seq (this):
-            match(parent):
-                (p:EmptyEnvironment) : `()
-                (p:Environment) : cons(env, to-env-seq(p))
+        defmethod to-env-list (this):
+            match(_parent):
+                (p:EmptyEnvironment) : List(env)
+                (p:Environment) : cons(env, to-env-list(p))
+
 
 public defn Environment () -> Environment:
     Environment(new EmptyEnvironment)
@@ -193,9 +194,10 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String:
             println("quote %@" % [tail(L)])
             ; Not sure how to implement this? Can probably do without
             tail(L)
+        
         else :
             val lambda = eval(env, head(L))
-            eval(env, cons(lambda, tail(L))) 
+            apply(lambda, tail(L))
 
 
 public defn eval (env:Environment, s-exp) -> True|False|List|Array|Int|String:
@@ -217,6 +219,4 @@ public defn eval (env:Environment, s-exp) -> True|False|List|Array|Int|String:
             if empty?(L):
                 L
             else:
-                match(head(L)):
-                    (l:StringSymbol) : eval-exp(env, L)
-                    (l:List) : apply(head(L), tail(L))
+                eval-exp(env, L)
