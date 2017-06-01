@@ -27,67 +27,86 @@ defpackage skanren:
 
 ; How to do type aliases?
 ; defstruct Environment <: HashTable<StringSymbol, List|Int|String>
-deftype Universe <: Table<StringSymbol, True|False|List|Array|Int|String>
-defmulti add-layer (env:Universe) -> False
-defmulti remove-layer (env:Universe) -> False
-defmulti set-direct (env:Universe, k:StringSymbol, v) -> False
+deftype Environment <: Table<StringSymbol, True|False|List|Array|Int|String>
+deftype EmptyEnvironment <: Environment
+defmulti parent (env:Environment) -> Environment
+defmulti set-direct (env:Environment, k:StringSymbol, v) -> False
+defmulti to-env-seq (env:Environment) -> List<HashTable<StringSymbol, True|False|List|Array|Int|String>>
 
 
-public defn Universe ():
-    val universe = Vector<HashTable<StringSymbol, True|False|List|Array|Int|String>>()
-    add(universe, HashTable<StringSymbol, True|False|List|Array|Int|String>())
-    new Universe :
+public defn Environment (parent:Environment) -> Environment:
+    val _parent:Environment = parent
+    val env = HashTable<StringSymbol, True|False|List|Array|Int|String>()
+    new Environment :
         ; Table Implementation Methods
         defmethod to-seq (this):
-            cat-all(universe)
+            match(parent):
+                (p:EmptyEnvironment) : to-seq(env)
+                (p:Environment) : cat(to-seq(env), to-seq(p))
         defmethod length (this):
-            sum(seq(length, universe))
+            match(parent):
+                (p:EmptyEnvironment) : length(env)
+                (p:Environment) : length(p) + length(env)
         defmethod set (this, k:StringSymbol, v):
-            match(find(key?{_, k}, in-reverse(universe))):
-                (env:Table) : env[k] = v
-                (env:False) : peek(universe)[k] = v
-        defmethod get? (this, k, d):
-            match(find(key?{_, k}, in-reverse(universe))):
-                (env:Table) : env[k]
-                (env:False) : d 
+            println("set: %_ %_" % [k, v])
+            match(find(key?{_, k}, to-env-seq(this))):
+                (f_env:Table) :
+                    println("set: f_env = %@" % [f_env])
+                    f_env[k] = v
+                (f_env:False) :
+                    println("set: f_env = false")
+                    env[k] = v
+                    println("set: f_env = false, setting in env = %@" % [env])
+        defmethod get? (this, k:StringSymbol, d):
+            match(find(key?{_, k}, to-env-seq(this))):
+                (f_env:Table) : f_env[k]
+                (f_env:False) : d
+        defmethod get (this, k:StringSymbol):
+            println("to-env-seq %@" % [to-env-seq(this)])
+            find!(key?{_, k}, to-env-seq(this))[k]
         defmethod remove (this, k:StringSymbol):
-            match(find(key?{_, k}, in-reverse(universe))):
-                (env:Table) : remove(env, k)
-                (env:False) : false
+            match(find(key?{_, k}, to-env-seq(this))):
+                (f_env:Table) : remove(f_env, k)
+                (f_env:False) : false
         defmethod clear (this):
-            clear(universe)
+            clear(env)
+            match(parent):
+                (p:EmptyEnvironment) : false
+                (p:Environment) : clear(p)
 
-        ; Universe specific function calls
-        defmethod add-layer (this):
-            add(universe, HashTable<StringSymbol, True|False|List|Array|Int|String>())
-        defmethod remove-layer (this):
-            pop(universe)
-            false
+        ; Environment specific function calls
+        defmethod parent (this) : _parent
         defmethod set-direct (this, k, v):
-            peek(universe)[k] = v
+            env[k] = v
+        defmethod to-env-seq (this):
+            match(parent):
+                (p:EmptyEnvironment) : `()
+                (p:Environment) : cons(env, to-env-seq(p))
+
+public defn Environment () -> Environment:
+    Environment(new EmptyEnvironment)
 
 
-defn apply (env, lambda, args) -> True|False|List|Array|Int|String:
+defn apply (lambda, args) -> True|False|List|Array|Int|String:
     println("apply: lambda = %_, args = %_" % [lambda, args])
     val arg_names = lambda[1]
     val body = lambda[2]
+    val env = lambda[3]
     ; no laziness here, eval those args!
     val evaled-args = map({eval(env, _)}, args)
     ; extend environment
-    add-layer(env)
+    val local_env = Environment(env)
     ; map({env[gensym(_)] = _}, arg_names, evaled-args)
-    map({set-direct(env, _, _)}, arg_names, evaled-args)
-    println("apply: env = %," % [env])
+    map({set-direct(local_env, _, _)}, arg_names, evaled-args)
+    println("apply: env = %," % [local_env])
     println("apply: body = %_" % [body])
     ; eval in that environment
-    val result = eval(env, body)
+    val result = eval(local_env, body)
     println("apply: result = %_" % [result])
-    ; clean up
-    remove-layer(env)
     result
 
 
-defn eval-cond (env:Universe, L) -> True|False|List|Array|Int|String:
+defn eval-cond (env:Environment, L) -> True|False|List|Array|Int|String:
     ; Not handling else correctly here, also not sure about what correct behaviour is
     ; if nothing matches, do nothing or raise error?
     defn eval-item (v):
@@ -102,7 +121,7 @@ defn eval-cond (env:Universe, L) -> True|False|List|Array|Int|String:
         (v:None) : false
 
 
-defn eval-exp (env:Universe, s-exp) -> True|False|List|Array|Int|String:
+defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String:
     val L = s-exp
     ; curly braces are partial function evaluation
     switch {head(L) == _}:
@@ -122,7 +141,7 @@ defn eval-exp (env:Universe, s-exp) -> True|False|List|Array|Int|String:
         `lambda :
             println("lambda: %@" % [L])
             println("lambda-types: %@" % [seq(object-type, L)])
-            L
+            append(L, List(env))
         `procedure? :
             println("procedure? %_" % [L[1]])
             match(eval(env, L[1])):
@@ -131,9 +150,9 @@ defn eval-exp (env:Universe, s-exp) -> True|False|List|Array|Int|String:
                 (v:True|False|Int|String) : false
         `let :
             println("let %@" % [tail(L)])
-            val lambda = List(`lambda, map(head, L[1]), L[2])
+            val lambda = List(`lambda, map(head, L[1]), L[2], env)
             val args = map(last, L[1])
-            apply(env, lambda, args)
+            apply(lambda, args)
         `cond :
             println("cond %@" % [tail(L)])
             eval-cond(env, tail(L))
@@ -179,7 +198,7 @@ defn eval-exp (env:Universe, s-exp) -> True|False|List|Array|Int|String:
             eval(env, cons(lambda, tail(L))) 
 
 
-public defn eval (env:Universe, s-exp) -> True|False|List|Array|Int|String:
+public defn eval (env:Environment, s-exp) -> True|False|List|Array|Int|String:
     println("s-exp = %_, type = %_" % [s-exp, object-type(s-exp)])
     match(s-exp):
         (b:True|False) :
@@ -200,4 +219,4 @@ public defn eval (env:Universe, s-exp) -> True|False|List|Array|Int|String:
             else:
                 match(head(L)):
                     (l:StringSymbol) : eval-exp(env, L)
-                    (l:List) : apply(env, head(L), tail(L))
+                    (l:List) : apply(head(L), tail(L))

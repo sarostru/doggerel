@@ -7,7 +7,7 @@ defpackage repl :
 
 println("Hello there!  Welcome to the repl!")
 
-val universe = Universe()
+val env = Environment()
 
 while true:
     ; Other possible prompts
@@ -17,6 +17,6 @@ while true:
     print("(\\\")> ")
     val form = unwrap-all(read-line(STANDARD-INPUT-STREAM))
     for s-exp in form do:
-        eval(universe, s-exp)
-    println("length(universe) = %_" % [length(universe)])
-    println("universe = [%,]" % [universe])
+        eval(env, s-exp)
+    println("length(env) = %_" % [length(env)])
+    println("env = [%,]" % [env])
