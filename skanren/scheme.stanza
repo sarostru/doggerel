@@ -48,21 +48,14 @@ public defn Environment (parent:Environment) -> Environment:
                 (p:EmptyEnvironment) : length(env)
                 (p:Environment) : length(p) + length(env)
         defmethod set (this, k:StringSymbol, v):
-            println("set: %_ %_" % [k, v])
             match(find(key?{_, k}, to-env-list(this))):
-                (f_env:Table) :
-                    println("set: f_env = %@" % [f_env])
-                    f_env[k] = v
-                (f_env:False) :
-                    println("set: f_env = false")
-                    env[k] = v
-                    println("set: f_env = false, setting in env = %@" % [env])
+                (f_env:Table) : f_env[k] = v
+                (f_env:False) : env[k] = v
         defmethod get? (this, k:StringSymbol, d):
             match(find(key?{_, k}, to-env-list(this))):
                 (f_env:Table) : f_env[k]
                 (f_env:False) : d
         defmethod get (this, k:StringSymbol):
-            println("to-env-list %@" % [to-env-list(this)])
             find!(key?{_, k}, to-env-list(this))[k]
         defmethod remove (this, k:StringSymbol):
             match(find(key?{_, k}, to-env-list(this))):
