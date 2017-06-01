@@ -193,8 +193,7 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String:
         `@quote :
             println("quote %@" % [tail(L)])
             ; Not sure how to implement this? Can probably do without
-            tail(L)
-        
+            last(L)
         else :
             val lambda = eval(env, head(L))
             apply(lambda, tail(L))
