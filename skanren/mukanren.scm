@@ -9,7 +9,7 @@
 (define (ext-s x v s) (cons (cons x v) s))
 
 (define (triple-equals u v)
-  (lambdag (s/c)
+  (lambda (s/c)
     (let ((s (unify u v (var s/c))))
       (if s (unit (cons s (cdr s/c))) mzero))))
 
@@ -28,21 +28,21 @@
       (else (and (eqv? u v) s)))))
 
 (define (call/fresh f)
-  (lambdag (s/c)
+  (lambda (s/c)
     (let ((c (cdr s/c)))
       ((f (var c)) (cons (car s/c) (+ c 1))))))
 
-(define (disj g1 g2) (lambdag (s/c) (mplus (g1 s/c) (g2 s/c))))
-(define (conj g1 g2) (lambdag (s/c) (bind (g1 s/c) g2)))
+(define (disj g1 g2) (lambda (s/c) (mplus (g1 s/c) (g2 s/c))))
+(define (conj g1 g2) (lambda (s/c) (bind (g1 s/c) g2)))
 
 (define (mplus $1 $2)
   (cond
     ((null? $1) $2)
-    ((procedure? $1) (lambdag () (mplus $2 ($1))))
+    ((procedure? $1) (lambda () (mplus $2 ($1))))
     (else (cons (car $1) (mplus (cdr $1) $2)))))
 
 (define (bind $ g)
   (cond
     ((null? $) mzero)
-    ((procedure? $) (lambdag () (bind ($) g)))
+    ((procedure? $) (lambda () (bind ($) g)))
     (else (mplus (g (car $)) (bind (cdr $) g)))))

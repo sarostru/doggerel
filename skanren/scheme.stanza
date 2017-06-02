@@ -1,5 +1,6 @@
 defpackage skanren:
     import core
+    import reader
     import collections
     import typeof
 
@@ -115,6 +116,20 @@ defn eval-cond (env:Environment, L) -> True|False|List|Array|Int|String:
         (v:None) : false
 
 
+defn eval-define (env:Environment, name_or_signature, body):
+    ; I think we need to wrap everything in Maybes, since by adding booleans I have
+    ; mixed up the meaning of false, in the first pass false wasn't in the language so 
+    ; it meant an underlying language thing only, but now define returns false so it
+    ; can work as part of a predicate which is weird
+    match(name_or_signature):
+        (name:StringSymbol) : env[name] = eval(env, body)
+        (signature:List) : 
+            ; syntax sugar for lambdas
+            val name = head(signature)
+            val lambda = List(`lambda, tail(signature), body)
+            eval-define(env, name, lambda)
+
+
 defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String:
     val L = s-exp
     ; curly braces are partial function evaluation
@@ -127,11 +142,7 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String:
             c
         `define :
             println("define(%_, %_)" % [L[1], L[2]])
-            ; I think we need to wrap everything in Maybes, since by adding booleans I have
-            ; mixed up the meaning of false, in the first pass false wasn't in the language so 
-            ; it meant an underlying language thing only, but now define returns false so it
-            ; can work as part of a predicate which is weird
-            env[L[1]] = eval(env, L[2])
+            eval-define(env, L[1], L[2])
         `lambda :
             println("lambda: %@" % [L])
             println("lambda-types: %@" % [seq(object-type, L)])
@@ -151,6 +162,8 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String:
             println("cond %@" % [tail(L)])
             eval-cond(env, tail(L))
         `= :
+            ; TODO:: Can't compare lambdas because their environments will be compared.
+            ; I think a Lambda type should be added to differentiate between the raw s-exp and the bound lambda function
             println("= %@" % [tail(L)])
             eval(env, L[1]) == eval(env, L[2])
         `if :
@@ -177,9 +190,22 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String:
         `null? :
             println("null? %@" % [tail(L)])
             eval(env, L[1]) == `()
+        `pair? :
+            ; in my implementation you can't make a Non-list cons apair
+            match(eval(env, L[1])):
+                (l:List) : length(l) == 2
+                (p:True|False|Array|Int|String) : false
+        `assp :
+            ; return first element of L2 that for which L[1] evaluates to True
+            defn f (x:True|False|List|Array|Int|String) -> True|False:
+               eval(env, cons(L[1], List(x))) as True|False 
+                
+            find(f, eval(env, L[2]) as List)
         `vector :
             println("vector %@" % [tail(L)])
             to-array<True|False|List|Array|Int|String>(map({eval(env, _)}, tail(L)))
+        `vector? :
+            eval(env, L[1]) is Array
         `vector-ref :
             println("vector-ref %@" % [tail(L)])
             get(eval(env, L[1]) as Array, eval(env, L[2]) as Int)
@@ -187,6 +213,11 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String:
             println("quote %@" % [tail(L)])
             ; Not sure how to implement this? Can probably do without
             last(L)
+        `require :
+            ; eval code from file accepting a file name as a string
+            val form = unwrap-all(read-file(eval(env, L[1]) as String))
+            for s-exp in form do:
+                eval(env, s-exp)
         else :
             val lambda = eval(env, head(L))
             apply(lambda, tail(L))
