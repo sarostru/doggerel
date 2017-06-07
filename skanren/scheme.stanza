@@ -71,6 +71,7 @@ public defn Environment (parent:Environment) -> Environment:
         ; Environment specific function calls
         defmethod parent (this) : _parent
         defmethod set-direct (this, k, v):
+            ; println("set-direct[%_] = %_" % [k, v])
             env[k] = v
         defmethod to-env-list (this):
             match(_parent):
@@ -82,22 +83,24 @@ public defn Environment () -> Environment:
     Environment(new EmptyEnvironment)
 
 
-defn apply (lambda, args) -> True|False|List|Array|Int|String:
-    println("apply: lambda = %_, args = %_" % [lambda, args])
+defn apply (env, lambda, args) -> True|False|List|Array|Int|String:
+    ; println("apply: lambda = %_, args = %_" % [lambda, args])
     val arg_names = lambda[1]
     val body = lambda[2]
-    val env = lambda[3]
+    val l-env = lambda[3]
+    ; println("apply: env = %," % [env])
     ; no laziness here, eval those args!
     val evaled-args = map({eval(env, _)}, args)
+    ; println("apply: evaled-args = %_, env = %@" % [evaled-args, to-seq(env)])
     ; extend environment
-    val local_env = Environment(env)
+    val local_env = Environment(l-env)
     ; map({env[gensym(_)] = _}, arg_names, evaled-args)
     map({set-direct(local_env, _, _)}, arg_names, evaled-args)
-    println("apply: env = %," % [local_env])
-    println("apply: body = %_" % [body])
+    ; println("apply: local_env = %," % [local_env])
+    ; println("apply: body = %_" % [body])
     ; eval in that environment
     val result = eval(local_env, body)
-    println("apply: result = %_" % [result])
+    ; println("apply: result = %_" % [result])
     result
 
 
@@ -132,46 +135,53 @@ defn eval-define (env:Environment, name_or_signature, body):
 
 defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String:
     val L = s-exp
+    ; println("eval-exp(s-exp = %_" % [s-exp])
     ; curly braces are partial function evaluation
     switch {head(L) == _}:
         `+ : 
             val a = eval(env, L[1]) as Int
             val b = eval(env, L[2]) as Int
             val c:Int = a + b
-            println("%_ + %_ = %_" % [a, b, c])
+            ; println("%_ + %_ = %_" % [a, b, c])
             c
         `define :
-            println("define(%_, %_)" % [L[1], L[2]])
+            ; println("define(%_, %_)" % [L[1], L[2]])
             eval-define(env, L[1], L[2])
+        `set! :
+            ; println("set!(%_, %_)" % [L[1], L[2]])
+            env[L[1]] = eval(env, L[2])
         `lambda :
-            println("lambda: %@" % [L])
-            println("lambda-types: %@" % [seq(object-type, L)])
+            ; println("lambda: %@" % [L])
+            ; println("lambda-types: %@" % [seq(object-type, L)])
             append(L, List(env))
         `procedure? :
-            println("procedure? %_" % [L[1]])
+            ; println("procedure? %_" % [L[1]])
             match(eval(env, L[1])):
                 (v:List) :
                     false when empty?(v) else head(v) == `lambda
                 (v:True|False|Int|String) : false
         `let :
-            println("let %@" % [tail(L)])
+            ; println("let %@" % [tail(L)])
             val lambda = List(`lambda, map(head, L[1]), L[2], env)
             val args = map(last, L[1])
-            apply(lambda, args)
+            apply(env, lambda, args)
         `cond :
-            println("cond %@" % [tail(L)])
+            ; println("cond %@" % [tail(L)])
             eval-cond(env, tail(L))
         `= :
             ; TODO:: Can't compare lambdas because their environments will be compared.
             ; I think a Lambda type should be added to differentiate between the raw s-exp and the bound lambda function
-            println("= %@" % [tail(L)])
+            ; println("= %@" % [tail(L)])
             eval(env, L[1]) == eval(env, L[2])
+        `!= :
+            ; println("!= %@" % [tail(L)])
+            eval(env, L[1]) != eval(env, L[2])
         `if :
-            println("if %@" % [tail(L)])
+            ; println("if %@" % [tail(L)])
             val cond-exp = List(List(L[1], L[2]), List(`else, L[3]))
             eval-cond(env, cond-exp)
         `and :
-            println("and %@" % [tail(L)])
+            ; println("and %@" % [tail(L)])
             var acc = true
             label<False> break:
                 for v in tail(L) do:
@@ -179,16 +189,18 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String:
                     if not acc: break(false)
             acc
         `cons :
-            println("cons %@" % [tail(L)])
-            cons(eval(env, L[1]), eval(env, L[2]) as List)
+            ; println("cons %@" % [tail(L)])
+            val a = eval(env, L[1])
+            val b = eval(env, L[2])
+            cons(a, b as List)
         `car :
-            println("car %@" % [tail(L)])
+            ; println("car %@" % [tail(L)])
             head(eval(env, L[1]) as List)
         `cdr :
-            println("cdr %@" % [tail(L)])
+            ; println("cdr %@" % [tail(L)])
             tail(eval(env, L[1]) as List)
         `null? :
-            println("null? %@" % [tail(L)])
+            ; println("null? %@" % [tail(L)])
             eval(env, L[1]) == `()
         `pair? :
             ; in my implementation you can't make a Non-list cons apair
@@ -202,15 +214,15 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String:
                 
             find(f, eval(env, L[2]) as List)
         `vector :
-            println("vector %@" % [tail(L)])
+            ; println("vector %@" % [tail(L)])
             to-array<True|False|List|Array|Int|String>(map({eval(env, _)}, tail(L)))
         `vector? :
             eval(env, L[1]) is Array
         `vector-ref :
-            println("vector-ref %@" % [tail(L)])
+            ; println("vector-ref %@" % [tail(L)])
             get(eval(env, L[1]) as Array, eval(env, L[2]) as Int)
         `@quote :
-            println("quote %@" % [tail(L)])
+            ; println("quote %@" % [tail(L)])
             ; Not sure how to implement this? Can probably do without
             last(L)
         `require :
@@ -218,26 +230,30 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String:
             val form = unwrap-all(read-file(eval(env, L[1]) as String))
             for s-exp in form do:
                 eval(env, s-exp)
+        `println :
+            ; not perfect, but with cons it should work ok
+            println(eval(env, L[1]))
+            
         else :
             val lambda = eval(env, head(L))
-            apply(lambda, tail(L))
+            apply(env, lambda, tail(L))
 
 
 public defn eval (env:Environment, s-exp) -> True|False|List|Array|Int|String:
-    println("s-exp = %_, type = %_" % [s-exp, object-type(s-exp)])
+    ; println("s-exp = %_, type = %_" % [s-exp, object-type(s-exp)])
     match(s-exp):
         (b:True|False) :
-            println("Bool(%_)" % [b])
+            ; println("Bool(%_)" % [b])
             b
         (i:Int) :
-            println("Int(%_)" % [i])
+            ; println("Int(%_)" % [i])
             i
         (s:String) :
-            println("String(%_)" % [s])
+            ; println("String(%_)" % [s])
             s
         (x:StringSymbol) :
-            println("%_ = %_" % [x, get?(env, x)])
-            env[x]
+            ; println("%_ = %_" % [x, get?(env, x)])
+            get?(env, x)
         (L:List) :
             if empty?(L):
                 L
