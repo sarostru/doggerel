@@ -230,9 +230,11 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String:
             val form = unwrap-all(read-file(eval(env, L[1]) as String))
             for s-exp in form do:
                 eval(env, s-exp)
-        `println :
-            ; not perfect, but with cons it should work ok
-            println(eval(env, L[1]))
+        `display :
+            ; pass directly onto the stanza println + string format
+            val fmt = eval(env, L[1]) as String 
+            val substitutions = seq({eval(env, _)}, tailn(L, 2))
+            println(fmt % substitutions)
             
         else :
             val lambda = eval(env, head(L))
