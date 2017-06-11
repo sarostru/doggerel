@@ -132,6 +132,19 @@ defn eval-define (env:Environment, name_or_signature, body):
             val lambda = List(`lambda, tail(signature), body)
             eval-define(env, name, lambda)
 
+defn eval-eq (env: Environment, lhs, rhs) -> True|False:
+    ; Compare value equality of primitives.
+    ; TODO:: Lists will always compare false because they get
+    ; mixed up with lambda functions and aren't being handled
+    ; TODO:: I'd like to have symbol equality as well
+    val x = eval(env, lhs)
+    val y = eval(env, rhs)
+    match(x, y):
+        (x_p:True|False|Int|String|Array,
+         y_p:True|False|Int|String|Array) : x_p == y_p
+        (x_p, y_p:List) : false
+        (x_p:List, y_p) : false
+
 
 defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String:
     val L = s-exp
@@ -169,13 +182,11 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String:
             ; println("cond %@" % [tail(L)])
             eval-cond(env, tail(L))
         `= :
-            ; TODO:: Can't compare lambdas because their environments will be compared.
-            ; I think a Lambda type should be added to differentiate between the raw s-exp and the bound lambda function
-            ; println("= %@" % [tail(L)])
-            eval(env, L[1]) == eval(env, L[2])
+            println("= %@" % [tail(L)])
+            eval-eq(env, L[1], L[2])
         `!= :
             ; println("!= %@" % [tail(L)])
-            eval(env, L[1]) != eval(env, L[2])
+            not eval-eq(env, L[1], L[2])
         `if :
             ; println("if %@" % [tail(L)])
             val cond-exp = List(List(L[1], L[2]), List(`else, L[3]))
