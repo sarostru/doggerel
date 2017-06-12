@@ -4,40 +4,18 @@ defpackage skanren:
     import collections
     import typeof
 
-; mukanren commands
-; `(var, var?, var=?)
-; `(walk, ext-s, u=)
-; `(unit, mzero)
-; `(unify)
-; `(call/fresh)
-; `(conj, disj)
-; `(mplus, bind)
+deftype Expression <: Equalable
 
-; support functionality I probably need to implement it in 
-; a similar way to the paper
-; `(lambda, apply, define)
-; `(print)
-
-; TODO:: How to define aliases for types?
-; deftype PrimitiveType = Int|String
-; deftype Expression = List|PrimitiveType
-
-; defn make-env ():
-;     HashTable<StringSymbol, List|Int|String>()
-
-
-; How to do type aliases?
-; defstruct Environment <: HashTable<StringSymbol, List|Int|String>
-deftype Environment <: Table<StringSymbol, True|False|List|Array|Int|String>
+deftype Environment <: Table<StringSymbol, True|False|List|Array|Int|String|Expression>
 deftype EmptyEnvironment <: Environment
 defmulti parent (env:Environment) -> Environment
 defmulti set-direct (env:Environment, k:StringSymbol, v) -> False
-defmulti to-env-list (env:Environment) -> List<HashTable<StringSymbol, True|False|List|Array|Int|String>>
+defmulti to-env-list (env:Environment) -> List<HashTable<StringSymbol, True|False|List|Array|Int|String|Expression>>
 
 
 public defn Environment (parent:Environment) -> Environment:
     val _parent:Environment = parent
-    val env = HashTable<StringSymbol, True|False|List|Array|Int|String>()
+    val env = HashTable<StringSymbol, True|False|List|Array|Int|String|Expression>()
     new Environment :
         ; Table Implementation Methods
         defmethod to-seq (this):
@@ -83,11 +61,20 @@ public defn Environment () -> Environment:
     Environment(new EmptyEnvironment)
 
 
-defn apply (env, lambda, args) -> True|False|List|Array|Int|String:
+defstruct Lambda <: Expression :
+    ; TODO:: Unevaluated expressions are lists, so body ends up a 1-length list
+    ;        which gets hit once with a Head to access it which is ugly, need to
+    ;        be more precise about the input types to this interpreter
+    arg_names : List<StringSymbol>
+    body : List
+    l-env : Environment
+
+
+defn apply (env:Environment, lambda:Lambda, args) -> True|False|List|Array|Int|String|Expression:
     ; println("apply: lambda = %_, args = %_" % [lambda, args])
-    val arg_names = lambda[1]
-    val body = lambda[2]
-    val l-env = lambda[3]
+    val arg_names = arg_names(lambda)
+    val body = body(lambda)
+    val l-env = l-env(lambda)
     ; println("apply: env = %," % [env])
     ; no laziness here, eval those args!
     val evaled-args = map({eval(env, _)}, args)
@@ -99,12 +86,12 @@ defn apply (env, lambda, args) -> True|False|List|Array|Int|String:
     ; println("apply: local_env = %," % [local_env])
     ; println("apply: body = %_" % [body])
     ; eval in that environment
-    val result = eval(local_env, body)
+    val result = eval(local_env, head(body))
     ; println("apply: result = %_" % [result])
     result
 
 
-defn eval-cond (env:Environment, L) -> True|False|List|Array|Int|String:
+defn eval-cond (env:Environment, L) -> True|False|List|Array|Int|String|Expression:
     ; Not handling else correctly here, also not sure about what correct behaviour is
     ; if nothing matches, do nothing or raise error?
     defn eval-item (v):
@@ -134,19 +121,24 @@ defn eval-define (env:Environment, name_or_signature, body):
 
 defn eval-eq (env: Environment, lhs, rhs) -> True|False:
     ; Compare value equality of primitives.
-    ; TODO:: Lists will always compare false because they get
-    ; mixed up with lambda functions and aren't being handled
-    ; TODO:: I'd like to have symbol equality as well
     val x = eval(env, lhs)
     val y = eval(env, rhs)
     match(x, y):
-        (x_p:True|False|Int|String|Array,
-         y_p:True|False|Int|String|Array) : x_p == y_p
-        (x_p, y_p:List) : false
-        (x_p:List, y_p) : false
+        (x_p:True|False|Int|String|Array|List,
+         y_p:True|False|Int|String|Array|List) : x_p == y_p
+        (x_p:Lambda, y_p:Lambda) :
+            ; println("eval-eq lambdas: lhs = %_, rhs = %_" % [lhs, rhs])
+            match(lhs, rhs):
+                ; TODO:: Comparing StringSymbol's doesn't work, since they could be arguments
+                ;        to a function and be relabeled and inserted into a sub-env.  Instead
+                ;        I need to augment the Lambda with a location/id tag
+                ;        maybe stanza already has an object id I can use?
+                ; (lhs:StringSymbol, rhs:StringSymbol) : lhs == rhs
+                (lhs, rhs) : false
+        (x_p, y_p) : false
 
 
-defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String:
+defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String|Expression:
     val L = s-exp
     ; println("eval-exp(s-exp = %_" % [s-exp])
     ; curly braces are partial function evaluation
@@ -166,23 +158,22 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String:
         `lambda :
             ; println("lambda: %@" % [L])
             ; println("lambda-types: %@" % [seq(object-type, L)])
-            append(L, List(env))
+            Lambda(L[1], tailn(L, 2), env)
         `procedure? :
             ; println("procedure? %_" % [L[1]])
             match(eval(env, L[1])):
-                (v:List) :
-                    false when empty?(v) else head(v) == `lambda
-                (v:True|False|Int|String) : false
+                (v:Lambda) : true
+                (v:True|False|Int|String|List) : false
         `let :
             ; println("let %@" % [tail(L)])
-            val lambda = List(`lambda, map(head, L[1]), L[2], env)
+            val lambda = Lambda(map(head, L[1]), tailn(L, 2), env)
             val args = map(last, L[1])
             apply(env, lambda, args)
         `cond :
             ; println("cond %@" % [tail(L)])
             eval-cond(env, tail(L))
         `= :
-            println("= %@" % [tail(L)])
+            ; println("= %@" % [tail(L)])
             eval-eq(env, L[1], L[2])
         `!= :
             ; println("!= %@" % [tail(L)])
@@ -217,16 +208,16 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String:
             ; in my implementation you can't make a Non-list cons apair
             match(eval(env, L[1])):
                 (l:List) : length(l) == 2
-                (p:True|False|Array|Int|String) : false
+                (p:True|False|Array|Int|String|Expression) : false
         `assp :
             ; return first element of L2 that for which L[1] evaluates to True
-            defn f (x:True|False|List|Array|Int|String) -> True|False:
+            defn f (x:True|False|List|Array|Int|String|Expression) -> True|False:
                eval(env, cons(L[1], List(x))) as True|False 
                 
             find(f, eval(env, L[2]) as List)
         `vector :
             ; println("vector %@" % [tail(L)])
-            to-array<True|False|List|Array|Int|String>(map({eval(env, _)}, tail(L)))
+            to-array<True|False|List|Array|Int|String|Expression>(map({eval(env, _)}, tail(L)))
         `vector? :
             eval(env, L[1]) is Array
         `vector-ref :
@@ -248,11 +239,11 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String:
             println(fmt % substitutions)
             
         else :
-            val lambda = eval(env, head(L))
+            val lambda = eval(env, head(L)) as Lambda
             apply(env, lambda, tail(L))
 
 
-public defn eval (env:Environment, s-exp) -> True|False|List|Array|Int|String:
+public defn eval (env:Environment, s-exp) -> True|False|List|Array|Int|String|Expression:
     ; println("s-exp = %_, type = %_" % [s-exp, object-type(s-exp)])
     match(s-exp):
         (b:True|False) :
