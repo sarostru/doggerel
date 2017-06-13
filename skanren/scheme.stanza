@@ -182,6 +182,8 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String|Expre
             ; println("if %@" % [tail(L)])
             val cond-exp = List(List(L[1], L[2]), List(`else, L[3]))
             eval-cond(env, cond-exp)
+        `not :
+            not eval(env, L[1]) as True|False
         `and :
             ; println("and %@" % [tail(L)])
             var acc = true
@@ -191,7 +193,7 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String|Expre
                     if not acc: break(false)
             acc
         `cons :
-            ; println("cons %@" % [tail(L)])
+            println("cons %@" % [tail(L)])
             val a = eval(env, L[1])
             val b = eval(env, L[2])
             cons(a, b as List)
