@@ -193,10 +193,11 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String|Expre
                     if not acc: break(false)
             acc
         `cons :
-            println("cons %@" % [tail(L)])
+            ; println("cons %@" % [tail(L)])
             val a = eval(env, L[1])
             val b = eval(env, L[2])
-            cons(a, b as List)
+            ; cons(a, b as List)
+            to-list([a, b])
         `car :
             ; println("car %@" % [tail(L)])
             head(eval(env, L[1]) as List)
