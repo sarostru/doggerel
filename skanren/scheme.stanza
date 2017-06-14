@@ -65,9 +65,22 @@ defstruct Lambda <: Expression :
     ; TODO:: Unevaluated expressions are lists, so body ends up a 1-length list
     ;        which gets hit once with a Head to access it which is ugly, need to
     ;        be more precise about the input types to this interpreter
+    id : Int
     arg_names : List<StringSymbol>
     body : List
     l-env : Environment
+    ; with syntax let's you rename things, for instance you could use it in the 
+    ; import statements to import things with a different name
+    ; in this case we rename the default constructor named Lambda to make-Lambda
+with:
+    constructor => make-Lambda
+
+defn Lambda (arg_names: List<StringSymbol>, body:List, l-env:Environment) :
+    ; genid gives a unique integer
+    make-Lambda(genid(), arg_names, body, l-env)
+
+defmethod equal? (a:Lambda, b:Lambda) :
+    id(a) == id(b)
 
 
 defn apply (env:Environment, lambda:Lambda, args) -> True|False|List|Array|Int|String|Expression:
@@ -120,21 +133,12 @@ defn eval-define (env:Environment, name_or_signature, body):
             eval-define(env, name, lambda)
 
 defn eval-eq (env: Environment, lhs, rhs) -> True|False:
-    ; Compare value equality of primitives.
+    ; Compare value equality of primitives except lambdas, those compare identity
     val x = eval(env, lhs)
     val y = eval(env, rhs)
     match(x, y):
-        (x_p:True|False|Int|String|Array|List,
-         y_p:True|False|Int|String|Array|List) : x_p == y_p
-        (x_p:Lambda, y_p:Lambda) :
-            ; println("eval-eq lambdas: lhs = %_, rhs = %_" % [lhs, rhs])
-            match(lhs, rhs):
-                ; TODO:: Comparing StringSymbol's doesn't work, since they could be arguments
-                ;        to a function and be relabeled and inserted into a sub-env.  Instead
-                ;        I need to augment the Lambda with a location/id tag
-                ;        maybe stanza already has an object id I can use?
-                ; (lhs:StringSymbol, rhs:StringSymbol) : lhs == rhs
-                (lhs, rhs) : false
+        (x_p:True|False|Int|String|Array|List|Lambda,
+         y_p:True|False|Int|String|Array|List|Lambda) : x_p == y_p
         (x_p, y_p) : false
 
 
@@ -196,7 +200,6 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String|Expre
             ; println("cons %@" % [tail(L)])
             val a = eval(env, L[1])
             val b = eval(env, L[2])
-            ; cons(a, b as List)
             to-list([a, b])
         `car :
             ; println("car %@" % [tail(L)])
@@ -208,7 +211,6 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String|Expre
             ; println("null? %@" % [tail(L)])
             eval(env, L[1]) == `()
         `pair? :
-            ; in my implementation you can't make a Non-list cons apair
             match(eval(env, L[1])):
                 (l:List) : length(l) == 2
                 (p:True|False|Array|Int|String|Expression) : false
