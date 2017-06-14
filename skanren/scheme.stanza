@@ -212,7 +212,7 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String|Expre
             eval(env, L[1]) == `()
         `pair? :
             match(eval(env, L[1])):
-                (l:List) : length(l) == 2
+                (l:List) : length(l) >= 1
                 (p:True|False|Array|Int|String|Expression) : false
         `assp :
             ; return first element of L2 that for which L[1] evaluates to True

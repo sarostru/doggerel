@@ -72,4 +72,17 @@
 (assert-pair (cons "one" 2))
 (assert-pair (cons 1 "two"))
 (assert-pair (cons (cons () ()) (cons () ())))
+(assert-pair (cons 1 ()))
+; leaving out the . syntax for literal cons pairs
+(assert-pair `(1 2)) 
+(assert-pair `(1)) 
+(assert-pair `(1 2 3)) 
+(display "***********************")
+(display "Things that aren't pairs:")
+(display "***********************")
+(assert-not-pair 8)
+(assert-not-pair `()) 
+(assert-not-pair true) 
+(assert-not-pair "some string") 
+
 
