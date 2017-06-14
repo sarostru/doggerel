@@ -33,10 +33,10 @@
 
 
 (define (assert-procedure x)
-  (run-test (lambda () (null? x)) x "is a procedure"))
+  (run-test (lambda () (procedure? x)) x "is a procedure"))
 
 (define (assert-not-procedure x)
-  (run-test (lambda () (not (null? x))) x "is not a procedure"))
+  (run-test (lambda () (not (procedure? x))) x "is not a procedure"))
 
 
 (display "***********************")
@@ -47,6 +47,7 @@
 (display "***********************")
 (display "Things that aren't procedures:")
 (display "***********************")
+(assert-not-procedure `())
 (assert-not-procedure 0)
 (assert-not-procedure "zero")
 (assert-not-procedure false)
