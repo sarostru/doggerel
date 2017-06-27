@@ -15,8 +15,10 @@ while true:
     ; ><((((‘>
     ; <(‘–‘)>
     print("(\\\")> ")
-    val form = unwrap-all(read-line(STANDARD-INPUT-STREAM))
-    for s-exp in form do:
-        eval(env, s-exp)
+    try :
+        val form = unwrap-all(read-line(STANDARD-INPUT-STREAM))
+        eval-form(env, form)
+    catch (e:LexerException) :
+        print("Caught exception: %_" % [e])
     println("length(env) = %_" % [length(env)])
     println("env = [%,]" % [env])

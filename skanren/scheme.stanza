@@ -80,7 +80,12 @@ defn Lambda (arg_names: List<StringSymbol>, body:List, l-env:Environment) :
     make-Lambda(genid(), arg_names, body, l-env)
 
 defmethod equal? (a:Lambda, b:Lambda) :
+    ; Lambdas compare on identity
     id(a) == id(b)
+
+defstruct NotALambda <: Exception : (bad-obj : True|False|List|Array|Int|String|Expression)
+defmethod print (o:OutputStream, e:NotALambda) :
+   print(o, "Not a Lambda: can only apply Lambda's not an object of type %_: %_" % [object-type(bad-obj(e)), bad-obj(e)] )
 
 
 defn apply (env:Environment, lambda:Lambda, args) -> True|False|List|Array|Int|String|Expression:
@@ -94,7 +99,6 @@ defn apply (env:Environment, lambda:Lambda, args) -> True|False|List|Array|Int|S
     ; println("apply: evaled-args = %_, env = %@" % [evaled-args, to-seq(env)])
     ; extend environment
     val local_env = Environment(l-env)
-    ; map({env[gensym(_)] = _}, arg_names, evaled-args)
     map({set-direct(local_env, _, _)}, arg_names, evaled-args)
     ; println("apply: local_env = %," % [local_env])
     ; println("apply: body = %_" % [body])
@@ -133,7 +137,6 @@ defn eval-define (env:Environment, name_or_signature, body):
             eval-define(env, name, lambda)
 
 defn eval-eq (env: Environment, lhs, rhs) -> True|False:
-    ; Compare value equality of primitives except lambdas, those compare identity
     val x = eval(env, lhs)
     val y = eval(env, rhs)
     match(x, y):
@@ -235,8 +238,7 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String|Expre
         `require :
             ; eval code from file accepting a file name as a string
             val form = unwrap-all(read-file(eval(env, L[1]) as String))
-            for s-exp in form do:
-                eval(env, s-exp)
+            eval-form(env, form)
         `display :
             ; pass directly onto the stanza println + string format
             val fmt = eval(env, L[1]) as String 
@@ -244,8 +246,9 @@ defn eval-exp (env:Environment, s-exp) -> True|False|List|Array|Int|String|Expre
             println(fmt % substitutions)
             
         else :
-            val lambda = eval(env, head(L)) as Lambda
-            apply(env, lambda, tail(L))
+            match(eval(env, head(L))):
+                (lambda:Lambda): apply(env, lambda, tail(L))
+                (something_else): throw(NotALambda(something_else))
 
 
 public defn eval (env:Environment, s-exp) -> True|False|List|Array|Int|String|Expression:
@@ -268,3 +271,13 @@ public defn eval (env:Environment, s-exp) -> True|False|List|Array|Int|String|Ex
                 L
             else:
                 eval-exp(env, L)
+
+
+public defn eval-form (env:Environment, form) -> True|False|List|Array|Int|String|Expression:
+    for s-exp in form do:
+        try :
+            eval(env, s-exp)
+        catch (e) :
+            println("Caught exception of type %_: %_" % [object-type(e), e])
+
+
